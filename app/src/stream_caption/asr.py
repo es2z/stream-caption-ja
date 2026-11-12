@@ -60,7 +60,9 @@ class HaasRecognizer:
         import haas_asr
         import torch
 
-        with torch.inference_mode():
+        # inference_mode() は語彙ブースト(NeMo の biasing)と相性が悪く、
+        # "Inference tensors do not track version counter" で落ちるため no_grad() を使う
+        with torch.no_grad():
             texts = haas_asr.transcribe(self._model, [audio], batch_size=1, vocabulary=self._vocabulary)
         return texts[0].strip() if texts else ""
 
