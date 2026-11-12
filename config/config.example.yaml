@@ -1,0 +1,58 @@
+# stream-caption-ja の設定
+# このファイルを config.yaml にコピーして編集する(config.yaml は git に含めない)。
+# 変更後は `docker compose restart app` で反映される。
+# OBS のパスワードや YouTube の字幕 URL などの秘密情報は .env に書く。
+
+# 字幕の言語(画面からも切り替えられる)
+#   en: 日本語を認識して英語に翻訳 → OBS 経由で YouTube / Twitch の CC に出す
+#   ja: 日本語のまま → YouTube の HTTP POST でのみ出せる(CEA-608 は日本語不可)
+mode: en
+
+asr:
+  backend: haas # haas | dummy(GPU なしで配線だけ確認する)
+  model: third-intelligence/Haas-ja-v1.0
+  device: cuda
+  # 誤認識しやすい固有名詞を「表記: [読み, ...]」で登録する。
+  # 登録するほど誤挿入も少し増えるので、必要な語だけにする。
+  vocabulary:
+    # エルデンリング: [えるでんりんぐ]
+    # マレニア: [まれにあ]
+  vocabulary_alpha: 2.0
+
+segmenter:
+  pause_seconds: 0.7 # この長さの無音で1文を確定(短くすると速く出るが文が細切れになる)
+  max_phrase_seconds: 14.0 # 無音がなくてもこの長さで区切る
+  min_audio_seconds: 0.8
+  min_speech_seconds: 0.3
+  silence_dbfs: -38 # これより小さい音は無音扱い。画面のメーターの黄色い線
+
+translator:
+  base_url: http://llama:8000
+  model: plamo-3-translate
+  history: 3 # 直近何文を文脈として渡すか(訳の揺れが減る)
+  # 配信の説明。訳の方向性が安定する
+  context: "日本語のゲーム実況配信です。配信者が話している言葉です。"
+  # 訳語を固定したい語(日本語: 英語)。文中に出てきた語だけが渡される
+  glossary:
+    # 体力: HP
+    # 初見: first playthrough
+  max_tokens: 256
+  timeout_seconds: 10
+
+filters:
+  # この言葉だけの発話は字幕にしない(句読点・長音は無視して比較)
+  drop_texts: [えー, えっと, あー, うーん, えーと]
+  min_chars: 2
+
+captions:
+  max_chars: 64 # 1回に送る最大文字数(CEA-608 は1行32文字・最大4行)
+  chars_per_second: 17 # 長い字幕を分けて送るときの間隔の目安
+
+sinks:
+  obs:
+    enabled: true
+    host: host.docker.internal # .env の OBS_HOST で上書きできる
+    port: 4455
+    reconnect_seconds: 5
+  youtube:
+    enabled: false # 日本語字幕を出すときに true(.env の YOUTUBE_ENABLED でも可)

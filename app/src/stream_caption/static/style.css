@@ -1,0 +1,32 @@
+:root {
+  --bg: #111418; --card: #1b2027; --line: #2c333d; --text: #e6e9ee; --muted: #8a94a3;
+  --accent: #4f8cff; --ok: #3fbf7f; --warn: #e0a33a; --bad: #e0574f;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, "Segoe UI", "Yu Gothic UI", sans-serif; }
+header { display: flex; align-items: baseline; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
+h1 { font-size: 18px; margin: 0; }
+h2 { font-size: 15px; margin: 0 0 10px; }
+main { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; padding: 16px 20px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+.card.wide { grid-column: 1 / -1; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0; }
+.small { font-size: 12px; }
+.muted { color: var(--muted); }
+select, input[type=text], input[type=password] { flex: 1; min-width: 180px; background: #0d1014; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+button { background: #2a313b; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 14px; cursor: pointer; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button:disabled { opacity: .45; cursor: default; }
+.meter { position: relative; height: 10px; background: #0d1014; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; margin-top: 8px; }
+#meter-bar { height: 100%; width: 0; background: var(--ok); transition: width .08s linear; }
+#meter-threshold { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--warn); left: 0; }
+.sink { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 6px 0; }
+.badge { font-size: 12px; padding: 2px 8px; border-radius: 10px; background: #2a313b; color: var(--muted); white-space: nowrap; }
+.badge.ok { background: rgba(63,191,127,.15); color: var(--ok); }
+.badge.warn { background: rgba(224,163,58,.15); color: var(--warn); }
+.badge.bad { background: rgba(224,87,79,.15); color: var(--bad); }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: normal; font-size: 12px; }
+td.time, td.latency { white-space: nowrap; color: var(--muted); font-size: 12px; }

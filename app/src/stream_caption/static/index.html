@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>stream-caption-ja</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>stream-caption-ja</h1>
+    <span id="asr-name" class="muted"></span>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>マイク</h2>
+      <div class="row">
+        <select id="device"><option value="">（マイクを許可すると一覧が出ます）</option></select>
+        <button id="start" class="primary">開始</button>
+        <button id="stop" disabled>停止</button>
+      </div>
+      <div class="row small">
+        <label><input type="checkbox" id="opt-ns"> ノイズ抑制</label>
+        <label><input type="checkbox" id="opt-ec"> エコー除去</label>
+        <label><input type="checkbox" id="opt-agc"> 自動音量調整</label>
+        <span class="muted">DAW を通した音を入れる場合は、すべてオフを推奨</span>
+      </div>
+      <div class="meter"><div id="meter-bar"></div><div id="meter-threshold" title="これより小さい音は無音扱い"></div></div>
+      <div class="row small"><span id="level">-- dBFS</span><span id="audio-state" class="muted">停止中</span></div>
+    </section>
+
+    <section class="card">
+      <h2>字幕</h2>
+      <div class="row">
+        <label><input type="radio" name="mode" value="en"> 英語に翻訳</label>
+        <label><input type="radio" name="mode" value="ja"> 日本語のまま</label>
+      </div>
+      <p class="muted small" id="mode-note"></p>
+      <div class="sink">
+        <label><input type="checkbox" id="obs-enabled"> OBS（CEA-608 / YouTube・Twitch）</label>
+        <span id="obs-status" class="badge">--</span>
+      </div>
+      <div class="sink">
+        <label><input type="checkbox" id="yt-enabled"> YouTube（HTTP POST・日本語可）</label>
+        <span id="yt-status" class="badge">--</span>
+      </div>
+      <div class="row small">
+        <input type="password" id="yt-url" placeholder="YouTube の字幕取り込み URL（.env に書いた場合は空でOK）" autocomplete="off">
+        <button id="yt-save">URLを設定</button>
+      </div>
+      <div class="row small">
+        <input type="text" id="test-text" placeholder="テスト用の字幕（しゃべらずに送信経路を確認）">
+        <button id="test-send">送信</button>
+      </div>
+      <p class="muted small" id="translator-status"></p>
+    </section>
+
+    <section class="card wide">
+      <h2>ログ</h2>
+      <table>
+        <thead><tr><th>時刻</th><th>認識（日本語）</th><th>字幕</th><th>遅延</th></tr></thead>
+        <tbody id="log"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

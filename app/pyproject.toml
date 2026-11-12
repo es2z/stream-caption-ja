@@ -1,0 +1,41 @@
+[project]
+name = "stream-caption-ja"
+version = "0.1.0"
+description = "Live Japanese/English closed captions for YouTube and Twitch, using Haas-ja and PLaMo 3 Translate"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "wsproto>=1.2",
+    "websockets>=12",
+    "httpx>=0.27",
+    "numpy",
+    "pyyaml>=6",
+]
+
+[project.optional-dependencies]
+# 本番の音声認識(GPU)。Docker では Haas-ASR のロックファイルで入れるため、ここは手動インストール用。
+haas = ["haas-asr @ git+https://github.com/third-intelligence/Haas-ASR.git@acc614f68769dcbfae9dba96b48439c4a66295af"]
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "ruff>=0.6"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/stream_caption"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"

@@ -1,0 +1,62 @@
+# マイク入力 → 日本語認識(Haas) → 英語翻訳(PLaMo 3 Translate) → OBS / YouTube の字幕
+#
+#   cp .env.example .env
+#   cp config/config.example.yaml config/config.yaml
+#   docker compose up -d --build
+#
+# Windows のブラウザで http://localhost:7860 を開く。
+
+services:
+  app:
+    build: ./app
+    restart: unless-stopped
+    depends_on:
+      - llama
+    env_file: .env
+    environment:
+      TRANSLATOR_URL: http://llama:8000
+    ports:
+      # 127.0.0.1 にだけ公開(LAN の他の PC からは開けない)
+      - "127.0.0.1:7860:7860"
+    volumes:
+      - ./config:/config:ro
+      - hf-cache:/cache/huggingface
+    extra_hosts:
+      # Docker Desktop では自動で用意されるが、WSL 内の Docker Engine 用に明示しておく
+      - "host.docker.internal:host-gateway"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  llama:
+    # PLaMo 3 対応が入った新しい llama.cpp を使う(古いイメージでは読み込めない)
+    image: ghcr.io/ggml-org/llama.cpp:server-cuda
+    restart: unless-stopped
+    env_file: .env
+    command: >
+      -hf ${PLAMO_MODEL:-pfnet/plamo-3-translate-0.8b-GGUF:Q4_K_M}
+      --alias plamo-3-translate
+      --host 0.0.0.0 --port 8000
+      -c 4096 -ngl 99 --parallel 1
+    environment:
+      LLAMA_CACHE: /cache/llama
+    volumes:
+      - llama-cache:/cache/llama
+    # 動作確認用に手元から叩きたいときだけ有効にする
+    # ports:
+    #   - "127.0.0.1:8000:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  hf-cache:
+  llama-cache:
