@@ -14,7 +14,7 @@ def make_sink(port: int, password: str, max_chars: int = 64) -> ObsCaptionSink:
 
 
 def caption(text: str) -> Caption:
-    return Caption(text=text, source="", lang="en", spoken_at=0)
+    return Caption(lines=(("en", text),), source="", spoken_at=0)
 
 
 async def test_sends_caption_with_auth():
@@ -65,7 +65,7 @@ async def test_japanese_is_not_sent_to_obs():
         sink = make_sink(obs.port, "")
         await sink.start()
         assert await sink.client.wait_connected(3)
-        await sink.send(Caption(text="こんにちは", source="こんにちは", lang="ja", spoken_at=0))
+        await sink.send(Caption(lines=(("ja", "こんにちは"),), source="こんにちは", spoken_at=0))
         assert obs.captions == [] and sink.skipped == 1
         await sink.stop()
 
@@ -80,3 +80,14 @@ async def test_reconnects_after_obs_restart():
     await asyncio.sleep(0.3)
     assert not sink.client.connected
     await sink.stop()
+
+
+async def test_bilingual_sends_only_english_to_obs():
+    async with FakeObs("") as obs:
+        sink = make_sink(obs.port, "")
+        await sink.start()
+        assert await sink.client.wait_connected(3)
+        both = Caption(lines=(("ja", "こんにちは"), ("en", "Hello")), source="こんにちは", spoken_at=0)
+        await sink.send(both)
+        assert obs.captions == ["Hello"]
+        await sink.stop()

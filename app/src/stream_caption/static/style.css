@@ -29,4 +29,6 @@ button:disabled { opacity: .45; cursor: default; }
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { color: var(--muted); font-weight: normal; font-size: 12px; }
+td { white-space: pre-line; }
 td.time, td.latency { white-space: nowrap; color: var(--muted); font-size: 12px; }
+[hidden] { display: none !important; }

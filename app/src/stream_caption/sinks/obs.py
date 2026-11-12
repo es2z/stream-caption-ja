@@ -177,11 +177,14 @@ class ObsCaptionSink(QueuedSink):
         await self.client.stop()
 
     async def send(self, caption: Caption) -> None:
-        if has_non_latin(caption.text):
+        # CEA-608 は日本語を送れないので、ラテン文字の行(英語)だけを送る。
+        # 「英語＋日本語」モードでは英語だけが OBS(Twitch など)に出る。
+        latin = " ".join(text for _, text in caption.lines if not has_non_latin(text))
+        if not latin:
             self.skipped += 1
             self.last_error = "日本語は CEA-608 で送れないため、OBS には送信していません"
             return
-        text = to_cea608_text(caption.text)
+        text = to_cea608_text(latin)
         if not text:
             self.skipped += 1
             return

@@ -89,7 +89,7 @@ def test_japanese_mode_skips_translation():
         with client.websocket_connect("/ws/audio") as ws:
             speak(ws)
         assert wait_for(lambda: sink.received)
-        assert sink.received[0].lang == "ja"
+        assert sink.received[0].lines[0][0] == "ja" and len(sink.received[0].lines) == 1
         assert sink.received[0].text.startswith("テスト音声です")
 
 
@@ -115,3 +115,43 @@ def test_index_page_served():
         response = client.get("/")
         assert response.status_code == 200 and "stream-caption-ja" in response.text
         assert client.get("/static/app.js").status_code == 200
+
+
+def test_bilingual_mode_and_order():
+    client, sink = make_client()
+    with client:
+        status = client.post("/api/settings", json={"mode": "both"}).json()
+        assert status["mode"] == "both" and status["bilingual_order"] == "ja_first"
+        with client.websocket_connect("/ws/audio") as ws:
+            speak(ws)
+        assert wait_for(lambda: len(sink.received) == 1)
+        langs = [lang for lang, _ in sink.received[0].lines]
+        assert langs == ["ja", "en"]
+        assert sink.received[0].lines[1][1].startswith("EN(")
+
+        assert client.post("/api/settings", json={"bilingual_order": "en_first"}).status_code == 200
+        with client.websocket_connect("/ws/audio") as ws:
+            speak(ws)
+        assert wait_for(lambda: len(sink.received) == 2)
+        assert [lang for lang, _ in sink.received[1].lines] == ["en", "ja"]
+        assert client.post("/api/settings", json={"bilingual_order": "zz"}).status_code == 400
+
+
+def test_translation_failure_falls_back_to_japanese():
+    sink = RecordingSink()
+
+    class Broken(FakeTranslator):
+        async def translate(self, text):
+            raise RuntimeError("llama down")
+
+    async def factory(config: AppConfig) -> Pipeline:
+        pipeline = Pipeline(config, DummyRecognizer(), Broken(), [sink])
+        await pipeline.start()
+        return pipeline
+
+    client = TestClient(create_app(AppConfig(mode="both"), pipeline_factory=factory))
+    with client:
+        with client.websocket_connect("/ws/audio") as ws:
+            speak(ws)
+        assert wait_for(lambda: sink.received)
+        assert [lang for lang, _ in sink.received[0].lines] == ["ja"]

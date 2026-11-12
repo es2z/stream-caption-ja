@@ -4,7 +4,7 @@ import httpx
 
 from stream_caption.config import CaptionConfig, YouTubeSinkConfig
 from stream_caption.sinks import Caption, YouTubeCaptionSink
-from stream_caption.sinks.youtube import build_body, format_timestamp, mask_url, parse_timestamp
+from stream_caption.sinks.youtube import build_body, build_cues, format_timestamp, mask_url, parse_timestamp
 
 URL = "http://upload.youtube.com/closedcaption?cid=SECRET-KEY"
 
@@ -37,8 +37,8 @@ async def test_send_posts_with_seq_and_utf8():
     sink = YouTubeCaptionSink(
         YouTubeSinkConfig(enabled=True, ingestion_url=URL), CaptionConfig(max_chars=64), client=client
     )
-    await sink.send(Caption(text="今日も配信を始めます", source="", lang="ja", spoken_at=5.0))
-    await sink.send(Caption(text="Second", source="", lang="en", spoken_at=6.0))
+    await sink.send(Caption(lines=(("ja", "今日も配信を始めます"),), source="", spoken_at=5.0))
+    await sink.send(Caption(lines=(("en", "Second"),), source="", spoken_at=6.0))
     assert [parse_qs(urlsplit(str(r.url)).query)["seq"] for r in seen] == [["1"], ["2"]]
     assert parse_qs(urlsplit(str(seen[0].url)).query)["cid"] == ["SECRET-KEY"]
     assert seen[0].content.decode("utf-8") == "1970-01-01T00:00:05.000\n今日も配信を始めます\n"
@@ -51,6 +51,19 @@ async def test_send_posts_with_seq_and_utf8():
 
 async def test_missing_url_is_skipped():
     sink = YouTubeCaptionSink(YouTubeSinkConfig(enabled=True), CaptionConfig())
-    await sink.send(Caption(text="x", source="", lang="en", spoken_at=0))
+    await sink.send(Caption(lines=(("en", "x"),), source="", spoken_at=0))
     assert sink.skipped == 1 and sink.last_error
     await sink.stop()
+
+
+def test_bilingual_cue_uses_br():
+    cues = build_cues(["こんにちは", "Hello <world>"], 0.0, 64, 10)
+    assert cues == [(0.0, "こんにちは<br>Hello ＜world＞")]
+
+
+def test_bilingual_long_lines_are_paired_by_chunk():
+    cues = build_cues(["あ" * 50, "word " * 5], 0.0, 32, 10)
+    assert len(cues) == 2
+    assert cues[0][1].count("<br>") == 1  # 1つ目は日本語と英語の両方
+    assert "<br>" not in cues[1][1]  # 2つ目は日本語の残りだけ
+    assert cues[1][0] == 3.2  # 1つ目の長い方(32文字)÷10文字/秒 のあと

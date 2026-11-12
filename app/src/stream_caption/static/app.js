@@ -141,15 +141,21 @@ function renderStatus(status) {
   $("asr-name").textContent = `認識: ${status.asr}`;
   if (firstStatus) {
     for (const radio of document.querySelectorAll("input[name=mode]")) radio.checked = radio.value === status.mode;
+    for (const radio of document.querySelectorAll("input[name=order]")) {
+      radio.checked = radio.value === status.bilingual_order;
+    }
     $("obs-enabled").checked = status.sinks.obs?.enabled ?? false;
     $("yt-enabled").checked = status.sinks.youtube?.enabled ?? false;
     firstStatus = false;
   }
   if (typeof status.silence_dbfs === "number") $("meter-threshold").style.left = `${dbToPercent(status.silence_dbfs)}%`;
 
-  $("mode-note").textContent = status.mode === "ja"
-    ? "日本語は CEA-608 で送れないため、OBS（Twitch）には送られません。YouTube の HTTP POST を使ってください。"
-    : "英語の字幕を OBS 経由で YouTube / Twitch の CC として表示します。";
+  $("order-row").hidden = status.mode !== "both";
+  $("mode-note").textContent = {
+    en: "英語の字幕を OBS 経由で YouTube / Twitch の CC として表示します。",
+    ja: "日本語は CEA-608 で送れないため、OBS（Twitch）には送られません。YouTube の HTTP POST を使ってください。",
+    both: "日本語と英語を2行で表示するのは YouTube の HTTP POST だけです。OBS（CEA-608）には英語だけが送られます。",
+  }[status.mode] || "";
 
   const obs = status.sinks.obs;
   if (obs) {
@@ -189,7 +195,7 @@ function addCaption(c) {
   const cells = [
     ["time", time],
     ["", c.source],
-    ["", c.lang === "en" ? c.text : `${c.text}${c.note ? `（${c.note}）` : ""}`],
+    ["", `${(c.lines || []).map(([, text]) => text).join("\n")}${c.note ? `（${c.note}）` : ""}`],
     ["latency", `${c.total_ms}ms（認識 ${c.asr_ms} / 翻訳 ${c.translate_ms}）`],
   ];
   for (const [cls, text] of cells) {
@@ -228,6 +234,9 @@ function init() {
   $("device").onchange = () => { store.set("deviceId", $("device").value); if (audio) { stop(); start(); } };
   for (const radio of document.querySelectorAll("input[name=mode]")) {
     radio.onchange = () => postSettings({ mode: radio.value }).catch((e) => alert(e.message));
+  }
+  for (const radio of document.querySelectorAll("input[name=order]")) {
+    radio.onchange = () => postSettings({ bilingual_order: radio.value }).catch((e) => alert(e.message));
   }
   $("obs-enabled").onchange = () => postSettings({ obs_enabled: $("obs-enabled").checked });
   $("yt-enabled").onchange = () => postSettings({ youtube_enabled: $("yt-enabled").checked });

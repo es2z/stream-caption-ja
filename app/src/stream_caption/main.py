@@ -25,6 +25,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .asr import create_recognizer
+from .captions import has_non_latin
 from .config import AppConfig, load_config
 from .pipeline import Pipeline
 from .sinks import Caption, ObsCaptionSink, YouTubeCaptionSink
@@ -35,7 +36,8 @@ STATIC = Path(__file__).parent / "static"
 
 
 class SettingsUpdate(BaseModel):
-    mode: str | None = None
+    mode: str | None = None  # en / ja / both
+    bilingual_order: str | None = None  # ja_first / en_first
     obs_enabled: bool | None = None
     youtube_enabled: bool | None = None
     youtube_url: str | None = None  # 画面から貼り付ける場合(保存はせずメモリ上のみ)
@@ -113,6 +115,11 @@ def create_app(config: AppConfig, pipeline_factory=build_pipeline) -> FastAPI:
                 p.set_mode(update.mode)
             except ValueError as exc:
                 raise HTTPException(400, str(exc)) from exc
+        if update.bilingual_order is not None:
+            try:
+                p.set_bilingual_order(update.bilingual_order)
+            except ValueError as exc:
+                raise HTTPException(400, str(exc)) from exc
         if update.obs_enabled is not None and "obs" in p.sinks:
             sink = p.sinks["obs"]
             sink.enabled = update.obs_enabled
@@ -138,7 +145,8 @@ def create_app(config: AppConfig, pipeline_factory=build_pipeline) -> FastAPI:
         if not text:
             raise HTTPException(400, "text is empty")
         p = pipeline()
-        caption = Caption(text=text, source=text, lang=p.mode, spoken_at=time.time())
+        lang = "ja" if has_non_latin(text) else "en"
+        caption = Caption(lines=((lang, text),), source=text, spoken_at=time.time())
         for sink in p.sinks.values():
             sink.submit(caption)
         return {"ok": True}

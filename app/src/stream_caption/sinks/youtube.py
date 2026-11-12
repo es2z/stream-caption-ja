@@ -41,6 +41,26 @@ def parse_timestamp(text: str) -> float | None:
     return None
 
 
+def escape_text(text: str) -> str:
+    """改行に使う <br> と紛れないよう、本文の < > は全角にする。"""
+    return text.replace("<", "＜").replace(">", "＞").replace("\n", " ")
+
+
+def build_cues(
+    lines: list[str], start: float, max_chars: int, chars_per_second: float
+) -> list[tuple[float, str]]:
+    """複数行(日本語と英語など)を、それぞれ max_chars で分けたうえで、同じ番号の塊を
+    <br> でつないで1つの字幕にする。表示時間はいちばん長い行に合わせる。"""
+    split = [split_caption(escape_text(line), max_chars) for line in lines]
+    count = max((len(chunks) for chunks in split), default=0)
+    cues, at = [], start
+    for i in range(count):
+        parts = [chunks[i] for chunks in split if i < len(chunks)]
+        cues.append((at, "<br>".join(parts)))
+        at += max(len(part) for part in parts) / max(1.0, chars_per_second)
+    return cues
+
+
 def build_body(cues: list[tuple[float, str]]) -> str:
     return "".join(f"{format_timestamp(ts)}\n{text}\n" for ts, text in cues)
 
@@ -108,13 +128,14 @@ class YouTubeCaptionSink(QueuedSink):
             self.skipped += 1
             self.last_error = "YOUTUBE_CAPTION_URL が設定されていません"
             return
-        chunks = split_caption(caption.text, self.captions.max_chars)
-        if not chunks:
+        cues = build_cues(
+            [text for _, text in caption.lines],
+            caption.spoken_at + self.clock_offset,
+            self.captions.max_chars,
+            self.captions.chars_per_second,
+        )
+        if not cues:
             return
-        cues, at = [], caption.spoken_at + self.clock_offset
-        for chunk in chunks:
-            cues.append((at, chunk))
-            at += len(chunk) / max(1.0, self.captions.chars_per_second)
         before = time.time()
         response = await self._client.post(
             with_seq(self.ingestion_url, self.seq),

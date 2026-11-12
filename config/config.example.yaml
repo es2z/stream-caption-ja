@@ -6,7 +6,10 @@
 # 字幕の言語(画面からも切り替えられる)
 #   en: 日本語を認識して英語に翻訳 → OBS 経由で YouTube / Twitch の CC に出す
 #   ja: 日本語のまま → YouTube の HTTP POST でのみ出せる(CEA-608 は日本語不可)
+#   both: 日本語と英語の2行 → YouTube の HTTP POST は2行、OBS(CEA-608)には英語だけ
 mode: en
+# both のときの並び順(画面からも切り替えられる): ja_first(日本語が先) / en_first(英語が先)
+bilingual_order: ja_first
 
 asr:
   backend: haas # haas | dummy(GPU なしで配線だけ確認する)

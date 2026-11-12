@@ -11,10 +11,24 @@ log = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class Caption:
-    text: str  # 表示する字幕(英語モードなら訳文、日本語モードなら認識結果)
+    """送る字幕1件。lines は表示する順に (言語, 文) を並べたもの。
+
+    - 英語モード:   (("en", 訳文),)
+    - 日本語モード: (("ja", 認識結果),)
+    - 両方モード:   (("ja", 認識結果), ("en", 訳文)) または英語が先
+    """
+
+    lines: tuple[tuple[str, str], ...]
     source: str  # 認識した日本語
-    lang: str  # text の言語 ("en" / "ja")
     spoken_at: float  # 話し始めた時刻 (UNIX 時刻, 秒)
+
+    @property
+    def text(self) -> str:
+        """ログ表示用に1行にまとめたもの。"""
+        return " / ".join(text for _, text in self.lines)
+
+    def text_in(self, lang: str) -> str:
+        return " ".join(text for line_lang, text in self.lines if line_lang == lang)
 
 
 class QueuedSink:

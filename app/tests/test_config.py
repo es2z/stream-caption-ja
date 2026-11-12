@@ -38,3 +38,10 @@ def test_example_config_is_valid():
     example = Path(__file__).resolve().parents[2] / "config" / "config.example.yaml"
     config = load_config(example, env={})
     assert config.mode in ("en", "ja")
+
+
+def test_bilingual_order_from_env(tmp_path):
+    config = load_config(tmp_path / "none.yaml", env={"CAPTION_MODE": "both", "CAPTION_ORDER": "en_first"})
+    assert config.mode == "both" and config.bilingual_order == "en_first"
+    with pytest.raises(ValueError):
+        load_config(tmp_path / "none.yaml", env={"CAPTION_ORDER": "x"})

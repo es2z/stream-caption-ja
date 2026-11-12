@@ -15,6 +15,7 @@
 |---|---|---|
 | `en`（英語に翻訳） | 英語 | OBS → YouTube・Twitch |
 | `ja`（日本語のまま） | 日本語 | YouTube（HTTP POST）のみ |
+| `both`（英語＋日本語） | 日本語と英語の2行（並び順を選べる） | YouTube（HTTP POST）は2行、OBS には英語だけ |
 
 > **日本語字幕について**: OBS が使う CEA-608 という字幕規格は英語・欧州の言語の文字しか送れません。
 > そのため日本語字幕は YouTube の HTTP POST 方式でだけ出せます。Twitch には日本語の CC を出す手段がありません。
@@ -66,7 +67,30 @@ YouTube は1つの配信につき字幕を1系統しか受け付けません。�
 2. マイクを選んで「開始」を押す（初回はマイクの許可を求められます）
 3. 話すと、ログに認識結果と字幕が流れます。「テスト用の字幕」から、しゃべらずに送信経路を確認することもできます
 
-モードの切り替え、OBS / YouTube のオン・オフは画面からできます（再起動すると config.yaml の値に戻ります）。
+モードと並び順の切り替え、OBS / YouTube のオン・オフは画面からできます（再起動すると config.yaml の値に戻ります）。
+
+### 起動・停止
+
+`docker-compose.yml` に `restart: unless-stopped` を指定しているので、一度 `docker compose up -d` したあとは、**Docker Desktop が起動すると自動で立ち上がります**（Docker Desktop の設定「Start Docker Desktop when you sign in」をオンにしておけば、Windows へのサインインだけで準備完了になります）。手動で止めた場合は、次に手動で起動するまで止まったままです。
+
+- **Docker Desktop の画面から**: 左の Containers に `stream-caption-ja` があるので、▶（起動）/ ■（停止）を押す
+- **WSL のコマンドで**（`stream-caption-ja` フォルダ内）:
+  - 起動: `docker compose start`（初回や設定変更後は `docker compose up -d`）
+  - 停止: `docker compose stop`（VRAM も解放されます）
+  - 削除: `docker compose down`（コンテナを消す。ダウンロード済みのモデルは残ります）
+  - ログを見る: `docker compose logs -f app`（Ctrl+C はログ表示をやめるだけで、コンテナは動き続けます）
+
+## 更新
+
+```bash
+cd ~/stream-caption-ja
+git pull
+docker compose pull llama      # llama.cpp も新しくする場合
+docker compose up -d --build
+docker image prune -f          # 古いイメージを消す
+```
+
+`.env` と `config/config.yaml` は git の管理外なので、更新しても上書きされません。新しい設定項目は `config/config.example.yaml` を見て、必要なものだけ自分の `config.yaml` に足してください（書かなければ既定値で動きます）。
 
 > ブラウザのタブは開いたままにしてください。Chrome は裏に回したタブの処理を抑えることがありますが、マイクを使っているタブは通常抑えられません。
 

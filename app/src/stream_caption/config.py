@@ -13,7 +13,8 @@ from typing import Any
 
 import yaml
 
-MODES = ("en", "ja")
+MODES = ("en", "ja", "both")
+ORDERS = ("ja_first", "en_first")
 
 
 @dataclass
@@ -82,7 +83,8 @@ class SinksConfig:
 
 @dataclass
 class AppConfig:
-    mode: str = "en"  # en: 英語に翻訳 / ja: 日本語のまま
+    mode: str = "en"  # en: 英語に翻訳 / ja: 日本語のまま / both: 日本語と英語の両方
+    bilingual_order: str = "ja_first"  # both のときの並び順: ja_first(日本語が先) / en_first(英語が先)
     asr: AsrConfig = field(default_factory=AsrConfig)
     segmenter: SegmenterConfig = field(default_factory=SegmenterConfig)
     translator: TranslatorConfig = field(default_factory=TranslatorConfig)
@@ -93,6 +95,8 @@ class AppConfig:
     def __post_init__(self) -> None:
         if self.mode not in MODES:
             raise ValueError(f"mode must be one of {MODES}, got {self.mode!r}")
+        if self.bilingual_order not in ORDERS:
+            raise ValueError(f"bilingual_order must be one of {ORDERS}, got {self.bilingual_order!r}")
 
 
 def _build(cls: type, data: dict[str, Any] | None) -> Any:
@@ -130,7 +134,9 @@ def load_config(path: str | os.PathLike | None = None, env: dict[str, str] | Non
     # 環境変数による上書き(秘密情報と、よく切り替えるもの)
     if env.get("CAPTION_MODE"):
         config.mode = env["CAPTION_MODE"].strip()
-        config.__post_init__()
+    if env.get("CAPTION_ORDER"):
+        config.bilingual_order = env["CAPTION_ORDER"].strip()
+    config.__post_init__()
     if env.get("ASR_BACKEND"):
         config.asr.backend = env["ASR_BACKEND"].strip()
     if env.get("TRANSLATOR_URL"):

@@ -11,7 +11,7 @@ from dataclasses import asdict, dataclass
 import numpy as np
 
 from .asr import Recognizer
-from .config import MODES, AppConfig
+from .config import MODES, ORDERS, AppConfig
 from .segmenter import SAMPLE_RATE, Phrase, PhraseSegmenter
 from .sinks import Caption, QueuedSink
 from .translator import Translator
@@ -27,8 +27,9 @@ class CaptionEvent:
 
     id: int
     source: str
-    text: str
-    lang: str
+    text: str  # 字幕を1行にまとめたもの
+    lang: str  # モード (en / ja / both)
+    lines: list[tuple[str, str]]  # 表示順の (言語, 文)
     spoken_at: float
     audio_seconds: float
     asr_ms: int
@@ -47,6 +48,7 @@ class Pipeline:
     ):
         self.config = config
         self.mode = config.mode
+        self.bilingual_order = config.bilingual_order
         self.recognizer = recognizer
         self.translator = translator
         self.sinks = {sink.name: sink for sink in sinks}
@@ -88,6 +90,11 @@ class Pipeline:
                 self.translator.reset_history()
             log.info("字幕モードを %s に変更しました", mode)
 
+    def set_bilingual_order(self, order: str) -> None:
+        if order not in ORDERS:
+            raise ValueError(f"order must be one of {ORDERS}")
+        self.bilingual_order = order
+
     # -- 画面への通知 -----------------------------------------------------------
 
     def subscribe(self) -> asyncio.Queue:
@@ -107,6 +114,7 @@ class Pipeline:
     def status(self) -> dict:
         return {
             "mode": self.mode,
+            "bilingual_order": self.bilingual_order,
             "asr": self.recognizer.name,
             "translator": bool(self.translator),
             "dropped_phrases": self.dropped_phrases,
@@ -146,37 +154,50 @@ class Pipeline:
             except Exception:
                 log.exception("文の処理中にエラーが発生しました")
 
+    def _lines(self, mode: str, source: str, translation: str) -> list[tuple[str, str]]:
+        """モードに応じて、表示する (言語, 文) を表示順に並べる。
+
+        翻訳できなかったときは日本語だけにする(英語モードでも何も出ないよりはよい)。
+        """
+        if mode == "ja" or not translation:
+            return [("ja", source)]
+        if mode == "en":
+            return [("en", translation)]
+        pair = [("ja", source), ("en", translation)]
+        return pair if self.bilingual_order == "ja_first" else pair[::-1]
+
     async def _process(self, phrase: Phrase, spoken_at: float, settled_at: float) -> None:
         t0 = time.perf_counter()
         source = (await self.recognizer.transcribe(phrase.audio)).strip()
         t1 = time.perf_counter()
         if not source or self._should_drop(source):
             return
-        mode, text, note = self.mode, source, ""
-        translate_ms = 0
-        if mode == "en":
+        mode, note = self.mode, ""
+        translation, translate_ms = "", 0
+        if mode in ("en", "both"):
             if self.translator is None:
                 note = "翻訳が無効なため日本語のまま"
-                mode = "ja"
             else:
                 try:
-                    text = await self.translator.translate(source)
+                    translation = await self.translator.translate(source)
                 except Exception as exc:
                     log.warning("翻訳に失敗しました: %s", exc)
                     self._notify({"type": "error", "message": f"翻訳に失敗しました: {exc}"})
-                    return
+                    note = "翻訳に失敗したため日本語のまま"
                 translate_ms = int((time.perf_counter() - t1) * 1000)
-                if not text:
-                    return
-        caption = Caption(text=text, source=source, lang=mode, spoken_at=spoken_at)
+        lines = self._lines(mode, source, translation)
+        if not lines:
+            return
+        caption = Caption(lines=tuple(lines), source=source, spoken_at=spoken_at)
         for sink in self.sinks.values():
             sink.submit(caption)
         self._ids += 1
         event = CaptionEvent(
             id=self._ids,
             source=source,
-            text=text,
+            text=caption.text,
             lang=mode,
+            lines=lines,
             spoken_at=spoken_at,
             audio_seconds=round(phrase.seconds, 2),
             asr_ms=int((t1 - t0) * 1000),
@@ -185,7 +206,7 @@ class Pipeline:
             note=note,
         )
         self.history = (self.history + [event])[-50:]
-        log.info("[%s] %s => %s (%dms)", mode, source, text, event.total_ms)
+        log.info("[%s] %s => %s (%dms)", mode, source, caption.text, event.total_ms)
         self._notify({"type": "caption", "caption": asdict(event)})
 
 
