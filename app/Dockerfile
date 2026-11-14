@@ -7,7 +7,12 @@
 # uv のダウンロードキャッシュはビルド用のキャッシュ(--mount=type=cache)に置き、イメージには含めない。
 # PyTorch / CUDA ライブラリがキャッシュと仮想環境に二重に入るのを防ぐため。
 # 再ビルド時はこのキャッシュが再利用されるので、ダウンロードし直しにはならない。
-FROM python:3.12-slim-bookworm
+#
+# ベースイメージと uv は版を固定する。latest のままだと配布元が更新されるたびに
+# 以降の手順のキャッシュが全部無効になり、PyTorch 入りの仮想環境(約 11GB)が
+# 作り直されて、古いものがビルドキャッシュに残る(ディスクが一気に増える)。
+# 更新したいときだけ、ここの版を書き換えて --build する。
+FROM python:3.12-slim-bookworm@sha256:935c3c5b12357a7e10caa9c1e6ca5692344d97cf229832ef584be2cec9fc03df
 
 ARG HAAS_COMMIT=acc614f68769dcbfae9dba96b48439c4a66295af
 
@@ -16,7 +21,7 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends build-essential git libsndfile1 ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.13.8 /uv /usr/local/bin/uv
 # キャッシュ用マウントは別のファイルシステムなのでハードリンクできない。copy を明示して警告を出さないようにする
 ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1 \
