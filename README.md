@@ -38,6 +38,7 @@
 - `config.yaml` の場合は、Docker Desktop の Containers 画面で `app` の再起動ボタン（↻）を押しても同じです
 - 反映できたかは `docker compose logs -f app` で「準備ができました」が出るのを見て確認できます（Ctrl+C でログ表示だけ終わります）
 - 画面で切り替えたモードや OBS / YouTube のオン・オフは、再起動すると `config.yaml` / `.env` の値に戻ります
+- ディスクの使用量が大きく増える可能性があるのは `--build` だけです（ふだんは数MB 程度。詳しくは「[ディスクの容量](#ディスクの容量)」）
 
 ## 必要なもの
 
@@ -47,7 +48,7 @@
   - **Docker Desktop（WSL2 バックエンド）** … おすすめ。GPU とネットワークの設定がほぼ不要
   - WSL 内に直接入れた Docker Engine + NVIDIA Container Toolkit
 - OBS Studio 30 以降（obs-websocket 5 が組み込み済み）
-- ディスク 20GB 程度の空き
+- ディスク 40GB 程度の空き（Docker 全体で約 35GB 使います）
 
 ## セットアップ
 
@@ -111,7 +112,55 @@ docker image prune -f          # 古いイメージを消す
 
 `.env` と `config/config.yaml` は git の管理外なので、更新しても上書きされません。新しい設定項目は `config/config.example.yaml` を見て、必要なものだけ自分の `config.yaml` に足してください（書かなければ既定値で動きます）。
 
+更新のあとに Windows 側のディスクの空きを取り戻したいときは、「[ディスクの容量](#ディスクの容量)」の掃除を実行してください。
+
 > ブラウザのタブは開いたままにしてください。Chrome は裏に回したタブの処理を抑えることがありますが、マイクを使っているタブは通常抑えられません。
+
+## ディスクの容量
+
+### どの操作で増えるか
+
+| 操作 | ディスクの増え方 |
+|---|---|
+| `docker compose restart app` / `docker compose up -d` | ほとんど増えない |
+| `docker compose up -d --build`（プログラムだけ変わった場合） | 数MB 程度 |
+| `docker compose up -d --build`（下の「大きく増える場合」） | **約 11GB 増える** |
+| `docker compose pull llama`（新しい llama.cpp があった場合） | 約 7GB 増える |
+
+**大きく増える場合**: PyTorch などが入った約 11GB の部分は、`app/Dockerfile` の次の行が変わったときに作り直されます（自分で書き換えたときや、そういう更新を `git pull` したとき）。
+
+- `FROM python:...`（ベースイメージ）
+- `COPY --from=ghcr.io/astral-sh/uv:...`（uv の版）
+- `ARG HAAS_COMMIT=...`（Haas-ASR の版）
+
+ベースイメージと uv は版を固定してあるので、配布元が更新されただけで作り直しになることはありません。
+
+作り直したあとも古いものは Docker の中に残ります。しかも Docker の仮想ディスク（`docker_data.vhdx`）は、**中身を消しても Windows 側のファイルが自動では小さくなりません**。空きを取り戻すには、次の掃除を実行します。
+
+### 掃除する（まとめて一度に）
+
+Windows の PowerShell で次を実行します（`<ユーザー名>` は WSL のユーザー名に置き換え）。**WSL のシェルからは実行しないでください。** 途中で WSL を止めるためです。
+
+```powershell
+powershell -ExecutionPolicy Bypass -File \\wsl.localhost\Ubuntu-24.04\home\<ユーザー名>\stream-caption-ja\scripts\cleanup-disk.ps1
+```
+
+やること:
+
+1. 使われなくなった古いイメージを消す
+2. 今のイメージで使っていない古いビルドキャッシュを消す
+3. Docker Desktop と WSL を止めて仮想ディスクを圧縮し、Docker Desktop を起動し直す（数分。字幕アプリは自動で立ち上がります）
+
+- 消さないもの: 今のイメージ、モデル、`.env` / `config.yaml`、uv のダウンロードキャッシュ（約 7GB。再ビルドでダウンロードし直さないためのもの）
+- 圧縮には管理者権限が必要です。管理者でない PowerShell から実行した場合は、圧縮の手前で確認画面が出ます
+- 開いている WSL のターミナルやエディタは閉じられます。作業中のものは保存してから実行してください
+- 掃除のあとも、次の `--build` で作り直しにはなりません
+
+| オプション | 内容 |
+|---|---|
+| `-IncludeDownloadCache` | uv のダウンロードキャッシュ（約 7GB）も消す。次の `--build` で PyTorch などをダウンロードし直します |
+| `-SkipCompact` | Docker を止めずに、中の掃除だけする（Windows 側の空きは増えません。管理者権限も要りません） |
+| `-Yes` | 開始前の確認を省く |
 
 ## マイクの取り込み方（Motu → Cakewalk → RVC の場合）
 
@@ -188,7 +237,7 @@ Ubuntu が一覧に出ないときは、PowerShell で `wsl -l -v` を実行し�
 |---|---|
 | VRAM | 合計 3〜4GB 程度（Haas 約 2GB + PLaMo 0.8B 約 1GB） |
 | GPU 使用率 | 文が確定した瞬間に短く使うだけで、平均は数%以下 |
-| ディスク | イメージ十数GB + モデル約 2GB |
+| ディスク | Docker 全体で約 35GB（イメージ約 19GB + ビルド用キャッシュ約 7GB + モデル約 2GB など） |
 | 遅延 | 話し終わりから字幕の送信まで約 1〜1.5 秒（無音判定 0.7 秒 + 認識・翻訳） |
 
 字幕はエンコード時に映像のデータへ乗るので、配信サイト側の遅延が大きくても映像とのズレは広がりません。実際の処理時間は画面のログの「遅延」欄に出ます。
