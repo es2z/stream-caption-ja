@@ -24,6 +24,9 @@
 
 **ファイルを書き換えただけでは反映されません。** 変えたものに応じて、WSL で `stream-caption-ja` フォルダに入って次のコマンドを実行してください。
 
+> **先に Docker Desktop を起動しておくこと。** WSL の `docker` コマンドは Docker Desktop が動いている間だけ使えます。
+> 止まっていると `docker: No such file or directory` などのエラーになります（→「[困ったとき](#困ったとき)」）。
+
 | 変えたもの | 実行するコマンド |
 |---|---|
 | `config/config.yaml`（辞書・用語集・無音判定など） | `docker compose restart app` |
@@ -122,6 +125,31 @@ docker image prune -f          # 古いイメージを消す
    ボーカル トラックからセンド（プリフェーダー）で別の出力に送り、その出力を仮想オーディオデバイス（VB-CABLE など）に割り当てます。Cakewalk が ASIO で Motu だけを使っている場合は、ASIO から出せる仮想デバイス（VoiceMeeter の ASIO 挿入など）が必要です。
 
 DAW で EQ・コンプをかけた音を使う場合は、画面の「ノイズ抑制・エコー除去・自動音量調整」はすべてオフにしてください（既定でオフ）。メーターの黄色い線（`silence_dbfs`）より声が十分大きく、無音時はそれより小さくなるように調整します。
+
+## 困ったとき
+
+### `docker` コマンドが使えない
+
+```
+-bash: /usr/bin/docker: No such file or directory
+failed to connect to the docker API at npipe:////./pipe/docker_engine ...
+```
+
+どちらも **Docker Desktop が起動していない**（または WSL 連携が切れている）ときに出ます。WSL の `/usr/bin/docker` は、Docker Desktop が動いている間だけ使えるようになるものです。PC を再起動したあとによく起きます。
+
+1. Windows で Docker Desktop を起動し、左下が「Engine running」になるまで待つ
+2. WSL で `hash -r` を実行する（直らなければターミナルを開き直す）
+3. もう一度コマンドを実行する
+
+それでも直らないときは、Docker Desktop の設定で **WSL integration**（検索欄に「WSL」と入力すると出ます）の中の、使っている Ubuntu がオンになっているか確認してください。アップデートでオフに戻ることがあります。
+
+**毎回起動するのが面倒なら**: Docker Desktop の設定で「Start Docker Desktop when you sign in」をオンにすると、Windows へのサインインだけで Docker Desktop が起動し、このアプリのコンテナも自動で立ち上がります。
+
+### 画面（localhost:7860）が開けない
+
+- Docker Desktop が起動しているか確認する
+- `docker compose ps` で `app` が `running` になっているか見る。なっていなければ `docker compose logs app` でエラーを確認する
+- 初回や再ビルド後はモデルの読み込みに1分ほどかかります。ログに「準備ができました」と出るまで待つ
 
 ## ネットワーク（OBS に繋がらないとき）
 
