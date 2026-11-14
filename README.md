@@ -133,6 +133,7 @@ DAW で EQ・コンプをかけた音を使う場合は、画面の「ノイズ�
 ```
 -bash: /usr/bin/docker: No such file or directory
 failed to connect to the docker API at npipe:////./pipe/docker_engine ...
+The command 'docker' could not be found in this WSL 2 distro. We recommend to activate the WSL integration ...
 ```
 
 どちらも **Docker Desktop が起動していない**（または WSL 連携が切れている）ときに出ます。WSL の `/usr/bin/docker` は、Docker Desktop が動いている間だけ使えるようになるものです。PC を再起動したあとによく起きます。
@@ -141,7 +142,13 @@ failed to connect to the docker API at npipe:////./pipe/docker_engine ...
 2. WSL で `hash -r` を実行する（直らなければターミナルを開き直す）
 3. もう一度コマンドを実行する
 
-それでも直らないときは、Docker Desktop の設定で **WSL integration**（検索欄に「WSL」と入力すると出ます）の中の、使っている Ubuntu がオンになっているか確認してください。アップデートでオフに戻ることがあります。
+3つ目のメッセージ（`could not be found in this WSL 2 distro`）が出たときや、それでも直らないときは、**WSL 連携がオフ**になっています。
+
+1. Docker Desktop の設定を開き、検索欄に「WSL」と入力する（または「Go to classic Settings」→ Resources → WSL integration）
+2. 使っている Ubuntu のスイッチをオンにして「Apply」（従来の画面では「Apply & restart」）
+3. WSL のターミナルを開き直す
+
+Ubuntu が一覧に出ないときは、PowerShell で `wsl -l -v` を実行し、VERSION が `2` になっているか確認してください（`1` なら `wsl --set-version Ubuntu 2`）。アップデートで連携がオフに戻ることもあります。
 
 **毎回起動するのが面倒なら**: Docker Desktop の設定で「Start Docker Desktop when you sign in」をオンにすると、Windows へのサインインだけで Docker Desktop が起動し、このアプリのコンテナも自動で立ち上がります。
 
