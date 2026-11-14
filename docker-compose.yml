@@ -4,7 +4,7 @@
 #   cp config/config.example.yaml config/config.yaml
 #   docker compose up -d --build
 #
-# Windows のブラウザで http://localhost:7860 を開く。
+# Windows のブラウザで http://localhost:7877 を開く。
 
 services:
   app:
@@ -17,7 +17,7 @@ services:
       TRANSLATOR_URL: http://llama:8000
     ports:
       # 127.0.0.1 にだけ公開(LAN の他の PC からは開けない)
-      - "127.0.0.1:7860:7860"
+      - "127.0.0.1:7877:7877"
     volumes:
       - ./config:/config:ro
       - hf-cache:/cache/huggingface
@@ -44,6 +44,12 @@ services:
       -c 4096 -ngl 99 --parallel 1
     environment:
       LLAMA_CACHE: /cache/llama
+    # イメージ既定のヘルスチェックは 8080 を見るので、上の --port に合わせる
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 5m
     volumes:
       - llama-cache:/cache/llama
     # 動作確認用に手元から叩きたいときだけ有効にする

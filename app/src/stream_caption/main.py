@@ -2,7 +2,7 @@
 
     python -m stream_caption.main            # config.yaml と環境変数を読んで起動
 
-ブラウザで http://localhost:7860 を開き、マイクを選んで「開始」を押す。
+ブラウザで http://localhost:7877 を開き、マイクを選んで「開始」を押す。
 """
 
 from __future__ import annotations
@@ -68,7 +68,7 @@ def create_app(config: AppConfig, pipeline_factory=build_pipeline) -> FastAPI:
         if youtube and youtube.enabled and youtube.ingestion_url:
             with contextlib.suppress(Exception):
                 await youtube.heartbeat()
-        log.info("準備ができました: http://localhost:7860")
+        log.info("準備ができました: http://localhost:7877")
         yield
         await app.state.pipeline.stop()
 
@@ -78,7 +78,7 @@ def create_app(config: AppConfig, pipeline_factory=build_pipeline) -> FastAPI:
     # --- (任意) 画面へのアクセス制限 ----------------------------------------
     # 既定ではポートを 127.0.0.1 にしか公開しないので不要。LAN 内の別 PC から
     # 操作したいなどでポートを外に公開する場合は、下を有効にして UI_TOKEN を設定し、
-    # http://<ホスト>:7860/?token=... で開く(WebSocket にも同じ確認を足すこと)。
+    # http://<ホスト>:7877/?token=... で開く(WebSocket にも同じ確認を足すこと)。
     #
     # from fastapi import Request
     # from fastapi.responses import PlainTextResponse
@@ -211,7 +211,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="stream-caption-ja server")
     parser.add_argument("--config", default=os.environ.get("CONFIG_PATH", "/config/config.yaml"))
     parser.add_argument("--host", default=os.environ.get("HOST", "0.0.0.0"))
-    parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", "7860")))
+    parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", "7877")))
     args = parser.parse_args()
     logging.basicConfig(
         level=os.environ.get("LOG_LEVEL", "INFO"),

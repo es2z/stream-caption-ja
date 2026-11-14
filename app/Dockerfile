@@ -49,5 +49,5 @@ RUN python -m compileall -q /opt/haas/.venv/lib /opt/app/src; exit 0
 
 ENV HF_HOME=/cache/huggingface \
     CONFIG_PATH=/config/config.yaml
-EXPOSE 7860
+EXPOSE 7877
 CMD ["python", "-m", "stream_caption.main"]
