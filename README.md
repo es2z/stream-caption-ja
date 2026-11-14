@@ -20,6 +20,22 @@
 > **日本語字幕について**: OBS が使う CEA-608 という字幕規格は英語・欧州の言語の文字しか送れません。
 > そのため日本語字幕は YouTube の HTTP POST 方式でだけ出せます。Twitch には日本語の CC を出す手段がありません。
 
+## ⚠ 設定を変えたら（反映方法）
+
+**ファイルを書き換えただけでは反映されません。** 変えたものに応じて、WSL で `stream-caption-ja` フォルダに入って次のコマンドを実行してください。
+
+| 変えたもの | 実行するコマンド |
+|---|---|
+| `config/config.yaml`（辞書・用語集・無音判定など） | `docker compose restart app` |
+| `.env`（OBS のパスワード、YouTube の URL、翻訳モデルなど） | `docker compose up -d` |
+| `docker-compose.yml` | `docker compose up -d` |
+| プログラムの更新（`git pull` したあと） | `docker compose up -d --build` |
+
+- **`.env` は `restart` では読み直されません。** 必ず `up -d` を使ってください（変わったコンテナだけが作り直されます）
+- `config.yaml` の場合は、Docker Desktop の Containers 画面で `app` の再起動ボタン（↻）を押しても同じです
+- 反映できたかは `docker compose logs -f app` で「準備ができました」が出るのを見て確認できます（Ctrl+C でログ表示だけ終わります）
+- 画面で切り替えたモードや OBS / YouTube のオン・オフは、再起動すると `config.yaml` / `.env` の値に戻ります
+
 ## 必要なもの
 
 - Windows 11 + WSL2
@@ -118,7 +134,7 @@ DAW で EQ・コンプをかけた音を使う場合は、画面の「ノイズ�
 
 ## 設定
 
-`config/config.yaml`（変更したら `docker compose restart app`）
+`config/config.yaml`（変更したら `docker compose restart app`。反映方法の一覧は「[⚠ 設定を変えたら](#-設定を変えたら反映方法)」）
 
 - `asr.vocabulary`: ゲーム名・キャラ名などを「表記: [読み]」で登録すると、認識されやすくなります
 - `translator.glossary`: 「日本語: 英語」で訳語を固定します（その語が出た文にだけ使われます）
