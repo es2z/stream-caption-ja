@@ -201,11 +201,28 @@ Ubuntu が一覧に出ないときは、PowerShell で `wsl -l -v` を実行し�
 
 **毎回起動するのが面倒なら**: Docker Desktop の設定で「Start Docker Desktop when you sign in」をオンにすると、Windows へのサインインだけで Docker Desktop が起動し、このアプリのコンテナも自動で立ち上がります。
 
-### 画面（localhost:7860）が開けない
+### 画面（localhost:7877）が開けない
 
 - Docker Desktop が起動しているか確認する
 - `docker compose ps` で `app` が `running` になっているか見る。なっていなければ `docker compose logs app` でエラーを確認する
 - 初回や再ビルド後はモデルの読み込みに1分ほどかかります。ログに「準備ができました」と出るまで待つ
+- `running` なのに開けないときは、ログの「準備ができました: http://localhost:....」の番号を見る。7877 でなければコンテナが古いままなので、`docker compose up -d --build` で作り直す
+
+### Docker がおかしい・起動しない（ディスクがいっぱい）
+
+C ドライブの空きがなくなると、Docker の仮想ディスクに書き込めなくなり、次のようなエラーが出ます。
+
+```
+input/output error
+OCI runtime exec failed: exec: "runc": executable file not found in $PATH
+preparing block device /dev/sdX: ... is not usable: no such device or address
+```
+
+1. C ドライブの空きを作る（数GB 以上）
+2. Docker Desktop を終了し、Windows の PowerShell で `wsl --shutdown` を実行する
+3. Docker Desktop を起動し直す（コンテナは自動で立ち上がります）
+
+直ったら、「[ディスクの容量](#ディスクの容量)」の掃除で Docker が使っている分を減らしておくと再発しにくくなります。
 
 ## ネットワーク（OBS に繋がらないとき）
 
